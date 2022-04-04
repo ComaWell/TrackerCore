@@ -65,7 +65,8 @@ public class SampleUtils {
 		} catch (DateTimeParseException e) {
 			throw new SampleParseException("Failed to parse timestamp", e);
 		}
-		Map<String, Number> readings = new HashMap<>();
+		
+		Map<String, Double> readings = new HashMap<>();
 		//Note: the lines alternate between the name of the reading and the value,
 		//with the way this is set up, odd indices are names, even indices are values
 		for (int i = 2; i < sampleData.size(); i+= 2) {
@@ -75,29 +76,23 @@ public class SampleUtils {
 				throw new SampleParseException("Unexpected reading input on line " + (i + startingLine) + ": \"" + readingLine + "\"");
 			String reading = readingMatch.group(2);
 			String valueLine = sampleData.get(i).strip();
-			Number value;
+			double value;
 			try {
-				value = valueLine.contains(".")
-						? Double.parseDouble(valueLine)
-						: Long.parseLong(valueLine);
+				value = Double.parseDouble(valueLine);
 			} catch(NumberFormatException unused) {
 				throw new SampleParseException("Unexpected value input on line " + (i + 1 + startingLine) + ": \"" + valueLine + "\"");
 			}
 			if (readings.putIfAbsent(reading, value) != null)
 				throw new SampleParseException("Duplicate reading found: \"" + reading + "\"");
 		}
-		return new Sample(timestamp, readings);
+		return new Sample(timestamp, convertReadings(readings));
 	}
 	
-	private static DecimalFormat DOUBLE_FORMAT = new DecimalFormat("#");
+	public static DecimalFormat DOUBLE_FORMAT = new DecimalFormat("#");
+	public static DecimalFormat LONG_FORMAT = new DecimalFormat("#");
 	
 	static {
 		DOUBLE_FORMAT.setMaximumFractionDigits(8);
-	}
-	
-	private static DecimalFormat LONG_FORMAT = new DecimalFormat("#");
-	
-	static {
 		LONG_FORMAT.setMaximumFractionDigits(0);
 	}
 	
@@ -107,23 +102,17 @@ public class SampleUtils {
 		return new StringBuilder()
 				.append(TIMESTAMP_FORMAT.format(sample.timestamp()))
 				.append("\n")
-				.append(CSVUtils.toCSVString(sample.readings(), (s) -> s, (v) -> {
-					if (v instanceof Double d)
-						return DOUBLE_FORMAT.format(d);
-					else if (v instanceof Long l)
-						return LONG_FORMAT.format(l);
-					else return v.toString();
-				}))
+				.append(CSVUtils.toCSVString(sample.readings(), false))
 				.append("\n")
 				.toString();
 	}
 	
 	//TODO: Test
-	public static Sample[] fromCSVString(String csv) throws SampleParseException {
+	public static List<Sample> fromCSVString(String csv) throws SampleParseException {
 		List<String> sampleData = csv.lines().toList();
 		sampleData.removeIf(String::isBlank);
 		if (sampleData.size() == 0)
-			return new Sample[0];
+			return List.of();
 		List<Sample> samples = new ArrayList<>();
 		//The number of samples we expect to parse based on the number of timestamps we found.
 		//This is just a failsafe to help ensure the data is being parsed correctly
@@ -145,7 +134,7 @@ public class SampleUtils {
 		if (samples.size() != expectedSampleCount)
 			throw new SampleParseException("Unexpected number of samples parsed. Expected "
 					+ expectedSampleCount + ", received " + samples.size());
-		return samples.toArray(Sample[]::new);
+		return List.copyOf(samples);
 	}
 	
 	private static Sample singleFromCSVString(List<String> sampleData) throws SampleParseException {
@@ -164,26 +153,31 @@ public class SampleUtils {
 		} catch (DateTimeParseException e) {
 			throw new SampleParseException("Failed to parse timestamp", e);
 		}
-		Map<String, Number> readings = CSVUtils.fromCSVEntries(
+		Map<String, Double> readings = CSVUtils.fromCSVEntries(
 				sampleData.subList(1, sampleData.size()),
 				(s) -> s,
 				(valueLine) -> {
 					try {
-						return valueLine.contains(".")
-								? Double.parseDouble(valueLine)
-								: Long.parseLong(valueLine);
+						return Double.parseDouble(valueLine);
 					} catch(NumberFormatException unused) {
 						throw new SampleParseException("Unexpected value input: \"" + valueLine + "\"");
 					}
 				}
 				);
-		return new Sample(timestamp, readings);
+		return new Sample(timestamp, convertReadings(readings));
 	}
 	
-	public static Map<String, Number> sortReadings(Sample sample) {
-		if (sample == null)
+	public static Sample.Reading[] convertReadings(Map<String, Double> readings) {
+		if (readings == null)
 			throw new NullPointerException();
-		return new TreeMap<>(sample.readings());
+		return readings.entrySet()
+				.stream()
+				.map((entry) -> new Sample.Reading(entry.getKey(), entry.getValue()))
+				.toArray(Sample.Reading[]::new);
+	}
+	
+	public static boolean isWhole(double d) {
+		return d % 1 == 0;
 	}
 	
 }

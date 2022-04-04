@@ -102,7 +102,7 @@ public static final int CONTINUOUS = -1;
 		}
 		if (!SAMPLE_END_PARSE_PATTERN.matcher(sampleData.get(sampleData.size() - 1)).find())
 			throw new SampleParseException("Unexpected sample end line (is the sample data incomplete?)");
-		Map<String, Map<String, Number>> readings = new HashMap<>();
+		Map<String, Map<String, Double>> readings = new HashMap<>();
 		//Note: the lines alternate between the name of the reading and the value,
 		//with the way this is set up, odd indices are names, even indices are values
 		for (int i = 2; i < sampleData.size() - 1; i+= 2) {
@@ -118,23 +118,21 @@ public static final int CONTINUOUS = -1;
 			String processName = readingMatch.group(1);
 			String counterName = readingMatch.group(2);
 			String valueLine = sampleData.get(i).strip();
-			Number value;
+			Double value;
 			try {
-				value = valueLine.contains(".")
-						? Double.parseDouble(valueLine)
-						: Long.parseLong(valueLine);
+				value = Double.parseDouble(valueLine);
 			} catch(NumberFormatException unused) {
 				throw new SampleParseException("Unexpected value input on line " + (i + 1) + ": \"" + valueLine + "\"");
 			}
 			if (!readings.containsKey(processName))
 				readings.put(processName, new HashMap<>());
-			Map<String, Number> pData = readings.get(processName);
+			Map<String, Double> pData = readings.get(processName);
 			if (pData.putIfAbsent(counterName, value) != null)
 				throw new SampleParseException("Duplicate reading \"" + counterName + "\" found for process " + processName);
 		}
 		return readings.entrySet()
 				.stream()
-				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, (entry) -> new Sample(timestamp, entry.getValue())));
+				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, (entry) -> new Sample(timestamp, SampleUtils.convertReadings(entry.getValue()))));
 	}
 
 }

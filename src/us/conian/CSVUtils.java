@@ -14,6 +14,34 @@ public class CSVUtils {
 	
 	public static final String SEPARATOR = ", ";
 	
+	public static <V> String toCSVString(V[] values) {
+		return toCSVString(values, true);
+	}
+	
+	public static <V> String toCSVString(V[] values, boolean singleLine) {
+		if (values == null)
+			throw new NullPointerException();
+		if (singleLine) {
+			StringJoiner sj = new StringJoiner(",");
+			for (V value : values) {
+				if (value == null)
+					throw new NullPointerException();
+				sj.add(value.toString());
+			}
+			return sj.toString();
+		}
+		else {
+			StringBuilder sb = new StringBuilder();
+			for (V value : values) {
+				if (value == null)
+					throw new NullPointerException();
+				sb.append(value.toString())
+				.append("\n");
+			}
+			return sb.toString();
+		}
+	}
+	
 	//the generics are only included because the compiler complains
 	//about the iterator types otherwise
 	public static <K, V> String toCSVString(Map<K, V> map) {

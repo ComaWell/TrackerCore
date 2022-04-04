@@ -8,6 +8,19 @@ import java.time.format.DateTimeFormatter;
 
 public class CLIUtils {
 	
+	public static final File DATA_FOLDER;
+	
+	static {
+		try {
+			DATA_FOLDER = new File(new File(CLIUtils.class.getProtectionDomain().getCodeSource().getLocation()
+					.toURI().getPath()).getParent(), "data");
+			if (!DATA_FOLDER.exists())
+				DATA_FOLDER.mkdirs();
+		} catch(Exception e) {
+			throw new InternalError("Failed to find or create cluster directory: " + e.getMessage());
+		}
+	}
+	
 	public static final DateTimeFormatter SAMPLE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 	
 	public static int determineSampleInterval(BufferedReader in, String arg) throws IOException {
