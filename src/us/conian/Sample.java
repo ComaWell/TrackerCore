@@ -93,6 +93,10 @@ public class Sample implements Iterable<Sample.Reading> {
 		return readings.clone();
 	}
 	
+	public Reading get(int i) {
+		return readings[i];
+	}
+	
 	public Reading getReading(String name) {
 		if (name == null)
 			throw new NullPointerException();

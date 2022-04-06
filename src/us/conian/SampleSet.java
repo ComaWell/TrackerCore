@@ -170,6 +170,8 @@ public class SampleSet implements Iterable<Sample> {
 		private final String genuine;
 		private final boolean complete;
 		
+		private final double[][] covMatrix;
+		
 		/* Order of computation:
 		 * 
 		 * 1. Intervals
@@ -195,6 +197,7 @@ public class SampleSet implements Iterable<Sample> {
 			this.genuine = calcGenuine();
 			if (!isGenuine() && assertGenuine)
 				throw new IllegalArgumentException("The given SampleSet is not genuine (" + genuine + ")");
+			this.covMatrix = calcCovMatrix();
 		}
 		
 		public Duration[] intervals() {
@@ -238,6 +241,10 @@ public class SampleSet implements Iterable<Sample> {
 		
 		public boolean isComplete() {
 			return complete;
+		}
+		
+		public double[][] getCovMatrix(){
+			return covMatrix.clone();
 		}
 		
 		private boolean calcComplete() {
@@ -379,6 +386,30 @@ public class SampleSet implements Iterable<Sample> {
 					new Sample(maxTimestamp, maxReadings.values().toArray(Sample.Reading[]::new)),
 					new Sample(LocalDateTime.MIN, meanReadings.values().toArray(Sample.Reading[]::new))
 					};
+		}
+		
+		private double[][] calcCovMatrix() {
+			//this.meanSample
+			if (complete) {
+				int size = samples[0].numReadings();
+				double[][] covMatrix = new double[size][size];
+				for (int i = 0; i < size; i++) {
+					for (int j=i; j < size; j++) {
+						for (Sample s : samples) {
+							double covVal = (s.get(i).value() - meanSample.get(i).value()) * (s.get(j).value() - meanSample.get(j).value()) / size;
+							covMatrix[i][j] += covVal;
+							if (i != j) {
+								covMatrix[j][i] += covVal;
+							}
+						}
+					}
+				}
+				
+				return covMatrix;
+			}
+			else {
+				throw new IllegalStateException();
+			}
 		}
 		
 	}
