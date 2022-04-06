@@ -167,7 +167,7 @@ public class SampleSet implements Iterable<Sample> {
 		private final Sample maxSample;
 		private final Sample meanSample;
 		
-		private final boolean genuine;
+		private final String genuine;
 		private final boolean complete;
 		
 		/* Order of computation:
@@ -193,8 +193,8 @@ public class SampleSet implements Iterable<Sample> {
 			this.maxSample = minMaxMeanSamples[1];
 			this.meanSample = minMaxMeanSamples[2];
 			this.genuine = calcGenuine();
-			if (!genuine && assertGenuine)
-				throw new IllegalArgumentException("The given Samples are not genuine");
+			if (!isGenuine() && assertGenuine)
+				throw new IllegalArgumentException("The given SampleSet is not genuine (" + genuine + ")");
 		}
 		
 		public Duration[] intervals() {
@@ -229,6 +229,10 @@ public class SampleSet implements Iterable<Sample> {
 		}
 		
 		public boolean isGenuine() {
+			return genuine == null;
+		}
+		
+		public String ingenuineReason() {
 			return genuine;
 		}
 		
@@ -251,22 +255,35 @@ public class SampleSet implements Iterable<Sample> {
 			return true;
 		}
 		
-		private boolean calcGenuine() {
+		private String calcGenuine() {
 			long pid = -1;
 			boolean assigned = false;
+			boolean died = false;
 			for (Sample s : samples) {
+				if (s.isDeadSample()) {
+					died = true;
+					continue;
+				}
+				/* Essentially dead samples were gathered at one point, indicating the
+				 * process died, but then non-dead samples were gathered afterwards,
+				 * which shouldn't be possible in a genuine SampleSet (even if the process
+				 * was restarted again later, it would almost certainly have a different
+				 * PID and counterName)
+				 */
+				else if (died)
+					return "contains non-dead samples that were taken after dead samples";
 				if (!s.hasReading(PID_READING))
-					return false;
+					return "missing 1 or more PID reading";
 				long p = Double.doubleToLongBits(s.getReading(PID_READING).value());
 				//pid's can never be negative
 				if (p < 0)
-					return false;
+					return "illegal PID value";
 				if (!assigned) {
 					pid = p;
 					assigned = true;
 				}
 				else if (pid != p)
-					return false;
+					return "contains multiple PID values";
 			}
 			long min = minInterval.getSeconds() + minInterval.getNano();
 			long max = maxInterval.getSeconds() + maxInterval.getNano();
@@ -274,8 +291,11 @@ public class SampleSet implements Iterable<Sample> {
 			//if the ratio of max interval : mean interval or the ratio of
 			//mean interval : min interval is greater than INTERVAL_OUTLIER_TOLERANCE,
 			//we are assuming that the data was not gathered in the same runtime
-			return max / mean < INTERVAL_OUTLIER_TOLERANCE
-					&& mean / min < INTERVAL_OUTLIER_TOLERANCE;
+			if (max / mean > INTERVAL_OUTLIER_TOLERANCE)
+				return "max interval above interval tolerance threshold";
+			if (mean / min > INTERVAL_OUTLIER_TOLERANCE)
+				return "min interval below interval tolerance threshold";
+			return null;
 		}
 		
 		private Duration[] calcIntervals() {

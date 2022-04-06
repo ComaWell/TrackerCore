@@ -26,6 +26,12 @@ public class Sample implements Iterable<Sample.Reading> {
 			return Double.compare(value, other.value);
 		}
 		
+		public int compareNames(Reading other) {
+			if (other == null)
+				throw new NullPointerException();
+			return name.compareToIgnoreCase(other.name);
+		}
+		
 		public int compareValues(Reading other) {
 			if (other == null)
 				throw new NullPointerException();
@@ -55,6 +61,7 @@ public class Sample implements Iterable<Sample.Reading> {
 	
 	private final LocalDateTime timestamp;
 	private final Reading[] readings;
+	private final boolean dead;
 	
 	private final int hashCode;
 	
@@ -63,7 +70,14 @@ public class Sample implements Iterable<Sample.Reading> {
 			throw new NullPointerException();
 		this.timestamp = timestamp;
 		this.readings = readings.clone();
-		Arrays.sort(readings);
+		Arrays.sort(this.readings, Reading::compareNames);
+		if (this.readings.length > 1) {
+			for (int i = 1; i < this.readings.length; i++) {
+				if (this.readings[i - 1].compareNames(this.readings[i]) == 0)
+					throw new IllegalArgumentException("Duplicate readings found");
+			}
+		}
+		this.dead = calcDead();
 		this.hashCode = computeHashCode();
 	}
 	
@@ -92,6 +106,23 @@ public class Sample implements Iterable<Sample.Reading> {
 		if (name == null)
 			throw new NullPointerException();
 		return getReading(name) != null;
+	}
+	
+	private boolean calcDead() {
+		for (Reading r : readings) {
+			if (!SampleUtils.isWhole(r.value) || Double.doubleToLongBits(r.value) != 0)
+				return false;
+		}
+		return true;
+	}
+	
+	/* A dead sample is one taken of a process that has already exited,
+	 * which occurs if a processes closes at some point during the sample
+	 * gathering process. A dead sample can be identified by the fact that
+	 * all of its readings are set to 0 (including its id process)
+	 */
+	public boolean isDeadSample() {
+		return dead;
 	}
 	
 	@Override

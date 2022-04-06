@@ -107,9 +107,10 @@ public class SampleUtils {
 				.toString();
 	}
 	
-	//TODO: Test
-	public static List<Sample> fromCSVString(String csv) throws SampleParseException {
-		List<String> sampleData = csv.lines().toList();
+	public static List<Sample> fromCSVStrings(List<String> sampleData) throws SampleParseException {
+		if (sampleData == null)
+			throw new NullPointerException();
+		sampleData = new ArrayList<>(sampleData);
 		sampleData.removeIf(String::isBlank);
 		if (sampleData.size() == 0)
 			return List.of();
@@ -122,10 +123,13 @@ public class SampleUtils {
 		//if it's not it'll be caught while being parsed
 		for (int i = 1; i < sampleData.size(); i++) {
 			String line = sampleData.get(i);
-			if (CounterUtils.TIMESTAMP_PARSE_PATTERN.matcher(line).matches()) {
+			try {
+				LocalDateTime.parse(line, TIMESTAMP_FORMAT);
 				samples.add(singleFromCSVString(sampleData.subList(start, i)));
 				start = i;
 				expectedSampleCount++;
+			} catch (DateTimeParseException unused) {
+				continue;
 			}
 		}
 		//The last sample in the data isn't parsed by the loop because there is no next timestamp,
@@ -137,6 +141,14 @@ public class SampleUtils {
 		return List.copyOf(samples);
 	}
 	
+	//TODO: Test
+	public static List<Sample> fromCSVString(String csv) throws SampleParseException {
+		if (csv == null)
+			throw new NullPointerException();
+		return fromCSVStrings(csv.lines().toList());
+		
+	}
+	
 	private static Sample singleFromCSVString(List<String> sampleData) throws SampleParseException {
 		//must have at least 2 lines, the first being the timestamp,
 		//and the next being a reading and value entry
@@ -144,12 +156,9 @@ public class SampleUtils {
 			throw new SampleParseException("Not enough lines for a full sample");
 		}
 		String timestampLine = sampleData.get(0);
-		Matcher timestampMatch = CounterUtils.TIMESTAMP_PARSE_PATTERN.matcher(timestampLine);
-		if (!timestampMatch.matches())
-			throw new SampleParseException("The first line does not contain a timestamp: \"" + timestampLine + "\"");
 		LocalDateTime timestamp;
 		try {
-			timestamp = LocalDateTime.parse(timestampMatch.group(1), TIMESTAMP_FORMAT);
+			timestamp = LocalDateTime.parse(timestampLine, TIMESTAMP_FORMAT);
 		} catch (DateTimeParseException e) {
 			throw new SampleParseException("Failed to parse timestamp", e);
 		}
