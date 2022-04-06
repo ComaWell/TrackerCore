@@ -44,18 +44,6 @@ public class Sample implements Iterable<Sample.Reading> {
 					? SampleUtils.LONG_FORMAT.format(value) 
 					: SampleUtils.DOUBLE_FORMAT.format(value));
 		}
-
-		@Override
-		public boolean equals(Object obj) {
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		@Override
-		public int hashCode() {
-			// TODO Auto-generated method stub
-			return 0;
-		}
 		
 	}
 	

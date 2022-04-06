@@ -1,5 +1,8 @@
 package us.conian;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.*;
@@ -187,6 +190,39 @@ public class SampleUtils {
 	
 	public static boolean isWhole(double d) {
 		return d % 1 == 0;
+	}
+	
+	public static Map<String, List<SampleSet>> loadSampleSets(File directory) {
+		if (directory == null)
+			throw new NullPointerException();
+		if (!directory.isDirectory())
+			throw new IllegalArgumentException("Given File is not a directory: " + directory.getAbsolutePath());
+		Map<String, List<SampleSet>> sampleSets = new HashMap<>();
+		File[] files = directory.listFiles(CSVUtils.FILE_FILTER);
+		if (files != null) {
+			for (File f : files) {
+				String counterName = f.getName().replace(CSVUtils.FILE_EXTENSION, "");
+				try (BufferedReader reader = new BufferedReader(new FileReader(f))){
+					SampleSet samples = new SampleSet(counterName, SampleUtils.fromCSVStrings(reader.lines().toList()));
+					sampleSets.putIfAbsent(samples.processName(), new ArrayList<>());
+					sampleSets.get(samples.processName()).add(samples);
+				} catch(Exception e) {
+					System.err.println("Failed to parse Samples file " 
+							+ f.getAbsolutePath() + ": " + e.getLocalizedMessage());
+				}
+			}
+		}
+		File[] subdirectories = directory.listFiles(File::isDirectory);
+		if (subdirectories != null) {
+			for (File s : subdirectories) {
+				for (Map.Entry<String, List<SampleSet>> entry : loadSampleSets(s).entrySet()) {
+					sampleSets.putIfAbsent(entry.getKey(), new ArrayList<>());
+					sampleSets.get(entry.getKey()).addAll(entry.getValue());
+				}
+				
+			}
+		}
+		return sampleSets;
 	}
 	
 }
