@@ -33,6 +33,10 @@ public class SampleSet implements Iterable<Sample> {
 		this(counterName, samples, true, true);
 	}
 	
+	public SampleSet minusDeadSamples() {
+		return new SampleSet(counterName, Arrays.stream(samples).filter((s) -> !s.isDeadSample()).toList(), meta.isGenuine(), meta.isComplete());
+	}
+	
 	/* The difference between counterName and processName is
 	 * that the counterName potentially has a suffix labeling
 	 * it distinctly from duplicate processes that were running
@@ -169,6 +173,7 @@ public class SampleSet implements Iterable<Sample> {
 		
 		private final String genuine;
 		private final boolean complete;
+		private final int maxNumReadings;
 		
 		private final double[][] covMatrix;
 		
@@ -186,6 +191,7 @@ public class SampleSet implements Iterable<Sample> {
 			this.complete = calcComplete();
 			if (!complete && assertComplete)
 				throw new IllegalArgumentException("The given Samples are not complete");
+			this.maxNumReadings = calcMaxNumReadings();
 			Duration[] minMaxMeanIntervals = calcMinMaxMeanIntervals();
 			this.minInterval = minMaxMeanIntervals[0];
 			this.maxInterval = minMaxMeanIntervals[1];
@@ -243,6 +249,10 @@ public class SampleSet implements Iterable<Sample> {
 			return complete;
 		}
 		
+		public int maxNumReadings() {
+			return maxNumReadings;
+		}
+		
 		public double[][] getCovMatrix(){
 			return covMatrix.clone();
 		}
@@ -260,6 +270,18 @@ public class SampleSet implements Iterable<Sample> {
 						return false;
 			}
 			return true;
+		}
+		
+		private int calcMaxNumReadings() {
+			if (complete) {
+				return samples[0].numReadings();
+			}
+			int max = 0;
+			for (Sample s : samples) {
+				if (s.numReadings() > max)
+					max = s.numReadings();
+			}
+			return max;
 		}
 		
 		private String calcGenuine() {
@@ -396,7 +418,7 @@ public class SampleSet implements Iterable<Sample> {
 				for (int i = 0; i < size; i++) {
 					for (int j=i; j < size; j++) {
 						for (Sample s : samples) {
-							double covVal = (s.get(i).value() - meanSample.get(i).value()) * (s.get(j).value() - meanSample.get(j).value()) / size;
+							double covVal = (s.get(i).value() - meanSample.get(i).value()) * (s.get(j).value() - meanSample.get(j).value()) / samples.length;
 							covMatrix[i][j] += covVal;
 							if (i != j) {
 								covMatrix[j][i] += covVal;

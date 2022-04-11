@@ -81,6 +81,15 @@ public class Sample implements Iterable<Sample.Reading> {
 		return readings.clone();
 	}
 	
+	public double[] asVector() {
+		double[] vector = new double[readings.length];
+		int index = 0;
+		for (Reading r : readings) {
+			vector[index++] = r.value();
+		}
+		return vector;
+	}
+	
 	public Reading get(int i) {
 		return readings[i];
 	}
@@ -115,6 +124,20 @@ public class Sample implements Iterable<Sample.Reading> {
 	 */
 	public boolean isDeadSample() {
 		return dead;
+	}
+	
+	/* Discards all readings that aren't actual counters. An example would
+	 * be "id process", which just contains the ID of the process being sampled,
+	 * and would not be expected to change
+	 */
+	
+	public Sample minusMetaReadings() {
+		return new Sample(
+				timestamp,
+				Arrays.stream(readings)
+				.filter((r) -> !SampleUtils.CONTAMINATE_READINGS.contains(r.name()))
+				.toArray(Reading[]::new)
+				);
 	}
 	
 	@Override

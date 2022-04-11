@@ -225,4 +225,9 @@ public class SampleUtils {
 		return sampleSets;
 	}
 	
+	public static Set<String> META_READINGS = Set.of(
+			"id process",
+			"creating process id"
+			);
+	
 }
