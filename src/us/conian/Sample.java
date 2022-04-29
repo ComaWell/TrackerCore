@@ -135,7 +135,7 @@ public class Sample implements Iterable<Sample.Reading> {
 		return new Sample(
 				timestamp,
 				Arrays.stream(readings)
-				.filter((r) -> !SampleUtils.CONTAMINATE_READINGS.contains(r.name()))
+				.filter((r) -> !SampleUtils.META_READINGS.contains(r.name()))
 				.toArray(Reading[]::new)
 				);
 	}
